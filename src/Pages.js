@@ -211,7 +211,7 @@ function Pages() {
             return result;
           });
         const pageData = await Promise.all(
-          new Array(totalSupply).fill(0).map(
+          new Array(parseInt(totalSupply)).fill(0).map(
             (_, i) =>
               new Promise(async (resolve) => {
                 const id = i + 1;
@@ -224,9 +224,10 @@ function Pages() {
               })
           )
         );
+
         setTotalSupply(totalSupply);
         setWalletOfOwner(walletOfOwner);
-        setPages(pageData);
+        setPages(pageData.filter((o) => o.message.length));
       } catch (e) {
         console.warn(e);
       } finally {
@@ -269,7 +270,6 @@ function Pages() {
                   {pages.length} / {totalSupply} pages written
                 </Typography>
                 <img src={pagesIcon} />
-                {loadingPages && <CircularProgress />}
                 {walletOfOwner.length === 0 && (
                   <Alert severity="warning">You don't own any pages :(</Alert>
                 )}
@@ -284,9 +284,10 @@ function Pages() {
                     You've written in these pages: {walletOfOwner.join(", ")}
                   </Alert>
                 )}
+                {loadingPages && <CircularProgress />}
                 {pages.map((o) => (
-                  <Typography key={o.id} variant="body1" component="span">
-                    {o.message}
+                  <Typography key={o.id} variant="body1" component="p">
+                    {o.id}: {o.message}
                   </Typography>
                 ))}
               </Box>
