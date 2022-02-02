@@ -17,99 +17,82 @@ function Pages() {
   const [web3, setWeb3] = useState(false);
   const [publicAddress, setPublicAddress] = useState(false);
   const [ownership, setOwnership] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(async () => {
     // Check if MetaMask is installed
     if (!window.ethereum) {
-      window.alert("Please install MetaMask first.");
+      window.alert("You need MetaMask to use this app");
       return;
     }
 
-    let newWeb3 = new Web3(window.ethereum);
-    if (!newWeb3) {
-      try {
-        // Request account access if needed
-        await window.ethereum.enable();
-        // We don't know window.web3 version, so we use our own instance of Web3
-        // with the injected provider given by MetaMask
-        setWeb3(new Web3(window.ethereum));
-        return;
-      } catch (error) {
-        window.alert("You need to allow MetaMask access.");
-        return;
-      }
-    } else {
-      setWeb3(newWeb3);
+    const newWeb3 = new Web3(window.ethereum);
+    // We don't know window.web3 version, so we use our own instance of Web3
+    // with the injected provider given by MetaMask
+    setWeb3(newWeb3);
+
+    const accounts = await newWeb3.eth.getAccounts();
+
+    if (accounts.length) {
+      const address = accounts[0].toLowerCase();
+      setPublicAddress(address);
+
+      const contractAddress = "0xaDC28cac9c1d53cC7457b11CC9423903dc09DDDc";
+      const miniAbi = [
+        {
+          constant: true,
+          inputs: [
+            {
+              name: "_owner",
+              type: "address",
+            },
+          ],
+          name: "balanceOf",
+          outputs: [
+            {
+              name: "balance",
+              type: "uint256",
+            },
+          ],
+          payable: false,
+          type: "function",
+        },
+      ];
+      setLoading(true);
+      const contractInstance = new newWeb3.eth.Contract(
+        miniAbi,
+        contractAddress
+      );
+
+      const res = await contractInstance.methods
+        .balanceOf(address)
+        .call({ from: address }, function (error, result) {
+          return result;
+        });
+      setLoading(false);
+      setOwnership(res);
     }
-
-    const coinbase = await newWeb3.eth.getCoinbase();
-    if (!coinbase) {
-      window.alert("Please activate MetaMask first.");
-      return;
-    }
-
-    const publicAddress = coinbase.toLowerCase();
-    setPublicAddress(publicAddress);
-
-    const contractAddress = "0xaDC28cac9c1d53cC7457b11CC9423903dc09DDDc";
-    const miniAbi = [
-      {
-        constant: true,
-        inputs: [
-          {
-            name: "_owner",
-            type: "address",
-          },
-        ],
-        name: "balanceOf",
-        outputs: [
-          {
-            name: "balance",
-            type: "uint256",
-          },
-        ],
-        payable: false,
-        type: "function",
-      },
-    ];
-    setLoading(true);
-    const contractInstance = new newWeb3.eth.Contract(miniAbi, contractAddress);
-
-    const res = await contractInstance.methods
-      .balanceOf(publicAddress)
-      .call({ from: publicAddress }, function (error, result) {
-        return result;
-      });
-    setLoading(false);
-    setOwnership(res);
   }, []);
 
   const handleOnConnectToWeb3 = useCallback(async () => {
-    let newWeb3 = web3;
-    if (!web3) {
+    if (web3) {
       // Check if MetaMask is installed
       if (!window.ethereum) {
-        window.alert("Please install MetaMask first.");
+        window.alert("You need MetaMask to use this app");
         return;
       }
 
       try {
-        // Request account access if needed
         await window.ethereum.enable();
-        // We don't know window.web3 version, so we use our own instance of Web3
-        // with the injected provider given by MetaMask
-        newWeb3 = new Web3(window.ethereum);
-        setWeb3(newWeb3);
       } catch (error) {
         window.alert("You need to allow MetaMask access.");
         return;
       }
     }
 
-    const coinbase = await newWeb3.eth.getCoinbase();
+    const coinbase = await web3.eth.getCoinbase();
     if (!coinbase) {
-      window.alert("Please activate MetaMask first.");
+      window.alert("Please connect to MetaMask.");
       return;
     }
 
@@ -138,7 +121,7 @@ function Pages() {
       },
     ];
     setLoading(true);
-    const contractInstance = new newWeb3.eth.Contract(miniAbi, contractAddress);
+    const contractInstance = new web3.eth.Contract(miniAbi, contractAddress);
 
     const res = await contractInstance.methods
       .balanceOf(publicAddress)
@@ -157,9 +140,7 @@ function Pages() {
   useEffect(async () => {
     if (ownership && ownership >= 1) {
       setLoadingPages(true);
-      console.log("---> fetch pages", web3, ownership);
       // fetch sketchy page data
-      // 0xD1c78F094ECe6636Be3b5e73D2e31864dfb5a2E2
       const contractAddress = "0xD1c78F094ECe6636Be3b5e73D2e31864dfb5a2E2";
       const miniAbi = [
         {
@@ -275,6 +256,7 @@ function Pages() {
               Connect to Web3!
             </Button>
           )}
+
           {(!ownership || ownership < 1) && <Box>Hodlers Only!</Box>}
           {ownership && ownership >= 1 && (
             <Box>
@@ -282,6 +264,10 @@ function Pages() {
                 You are the proud owner of {ownership} SABC.
               </Typography>
               <Box>
+                <Typography variant="h4">The story thus far...</Typography>
+                <Typography variant="caption" component="div">
+                  {pages.length} / {totalSupply} pages written
+                </Typography>
                 <img src={pagesIcon} />
                 {loadingPages && <CircularProgress />}
                 {walletOfOwner.length === 0 && (
@@ -298,10 +284,6 @@ function Pages() {
                     You've written in these pages: {walletOfOwner.join(", ")}
                   </Alert>
                 )}
-                <Typography variant="h4">The story thus far...</Typography>
-                <Typography variant="caption" component="div">
-                  {pages.length} / {totalSupply} pages written
-                </Typography>
                 {pages.map((o) => (
                   <Typography key={o.id} variant="body1" component="span">
                     {o.message}
