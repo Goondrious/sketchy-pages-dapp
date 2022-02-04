@@ -8,10 +8,28 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
+import FormControl from "@mui/material/FormControl";
+import FormLabel from "@mui/material/FormLabel";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import RadioGroup from "@mui/material/RadioGroup";
+import Radio from "@mui/material/Radio";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardActions from "@mui/material/CardActions";
+
+import PersonIcon from "@mui/icons-material/Person";
 
 import Web3 from "web3";
 
 import pagesIcon from "./sabc.png";
+
+const shuffle = (a) => {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
 
 function Pages() {
   const [web3, setWeb3] = useState(false);
@@ -241,6 +259,36 @@ function Pages() {
       walletOfOwner.filter((o) => pages.find(({ id }) => id == o)).length > 0
     );
   }, [pages, walletOfOwner]);
+
+  const [filter, setFilter] = useState(""); // owner
+  const handleOnFilterChange = (e) => setFilter(e.target.value);
+  const filteredPages = useMemo(() => {
+    let update = [...pages];
+    if (filter === "owned") {
+      console.log("----> OWNED!", walletOfOwner);
+      update = update.filter((o) => walletOfOwner.includes(o.id));
+    }
+    return update;
+  }, [pages, filter, walletOfOwner]);
+
+  const [sorting, setSorting] = useState("asc"); // desc, random
+  const handleOnSortingChange = (e) => setSorting(e.target.value);
+  const sortedPages = useMemo(() => {
+    let update = [...filteredPages];
+    if (sorting === "asc" || sorting === "desc") {
+      update.sort((a, b) =>
+        sorting === "asc"
+          ? parseInt(a.id) - parseInt(b.id)
+          : parseInt(b.id) - parseInt(a.id)
+      );
+    } else {
+      update = shuffle(update);
+    }
+    return update;
+  }, [filteredPages, sorting]);
+
+  const [display, setDisplay] = useState("gallery"); // "passage"
+  const handleOnDisplayChange = (e) => setDisplay(e.target.value);
   return (
     <Box
       sx={{
@@ -285,11 +333,124 @@ function Pages() {
                   </Alert>
                 )}
                 {loadingPages && <CircularProgress />}
-                {pages.map((o) => (
-                  <Typography key={o.id} variant="body1" component="p">
-                    {o.id}: {o.message}
-                  </Typography>
-                ))}
+                {pages.length !== 0 && (
+                  <Box>
+                    <Box>
+                      <FormControl>
+                        <FormLabel>Sorting</FormLabel>
+                        <RadioGroup
+                          aria-labelledby="page-sorting-buttons-group-label"
+                          defaultValue="asc"
+                          value={sorting}
+                          name="page-sorting-radio-buttons-group"
+                          onChange={handleOnSortingChange}
+                          row
+                        >
+                          <FormControlLabel
+                            value="asc"
+                            control={<Radio />}
+                            label="Token Id Asc."
+                          />
+                          <FormControlLabel
+                            value="desc"
+                            control={<Radio />}
+                            label="Token Id Desc."
+                          />
+                          <FormControlLabel
+                            value="random"
+                            control={<Radio />}
+                            label="Random"
+                          />
+                        </RadioGroup>
+                      </FormControl>
+                    </Box>
+                    <Box>
+                      <FormControl>
+                        <FormLabel>Display</FormLabel>
+                        <RadioGroup
+                          aria-labelledby="page-display-buttons-group-label"
+                          defaultValue="gallery"
+                          value={display}
+                          name="page-display-radio-buttons-group"
+                          onChange={handleOnDisplayChange}
+                          row
+                        >
+                          <FormControlLabel
+                            value="gallery"
+                            control={<Radio />}
+                            label="Gallery"
+                          />
+                          <FormControlLabel
+                            value="passage"
+                            control={<Radio />}
+                            label="Passage"
+                          />
+                        </RadioGroup>
+                      </FormControl>
+                    </Box>
+                    <Box>
+                      <FormControl>
+                        <FormLabel>Filtering</FormLabel>
+                        <RadioGroup
+                          aria-labelledby="page-filtering-buttons-group-label"
+                          defaultValue=""
+                          value={filter}
+                          name="page-filtering-radio-buttons-group"
+                          onChange={handleOnFilterChange}
+                          row
+                        >
+                          <FormControlLabel
+                            value=""
+                            control={<Radio />}
+                            label="None"
+                          />
+                          <FormControlLabel
+                            value="owned"
+                            control={<Radio />}
+                            label="Owned"
+                          />
+                        </RadioGroup>
+                      </FormControl>
+                    </Box>
+                  </Box>
+                )}
+                {display === "gallery" ? (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      justifyContent: "space-evenly",
+                    }}
+                  >
+                    {sortedPages.map((o) => (
+                      <Card sx={{ width: "31%", mb: 1 }}>
+                        <CardContent>
+                          <Typography variant="h5" component="div">
+                            {walletOfOwner.includes(o.id) && <PersonIcon />}
+                            Token Id #{o.id}{" "}
+                          </Typography>
+                          <Typography sx={{ mb: 1.5 }} color="text.secondary">
+                            {o.message}
+                          </Typography>
+                        </CardContent>
+                        <CardActions></CardActions>
+                      </Card>
+                    ))}
+                  </Box>
+                ) : (
+                  <Box>
+                    {sortedPages.map((o) => (
+                      <Typography key={o.id} variant="body1" component="span">
+                        {o.message}
+                        {[".", ",", "!", "?"].includes(
+                          o.message.charAt(o.message.length - 1)
+                        )
+                          ? " "
+                          : ". "}
+                      </Typography>
+                    ))}
+                  </Box>
+                )}
               </Box>
             </Box>
           )}
